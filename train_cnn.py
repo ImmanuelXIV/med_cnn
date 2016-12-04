@@ -25,8 +25,8 @@ keep_probability = 0.5  # this is the dropout (keep) value for the training of t
 # ToDo: Download the German word2vec model (700MB, link) and set the path accordingly
 # https://tubcloud.tu-berlin.de/public.php?service=files&t=dc4f9d207bcaf4d4fae99ab3fbb1af16
 model = "/home/immanuel/ETH/data/german.model"
-diagnoses = "/home/immanuel/Desktop/sample10.txt"           # this is a txt file, where each line is a diagnosis
-labels = "/home/immanuel/Desktop/sample10_lables.txt"       # this is the corresponding txt file, 1 class in each line
+diagnoses = "/home/immanuel/ETH/med_cnn/sample10.txt"           # this is a txt file, where each line is a diagnosis
+labels = "/home/immanuel/ETH/med_cnn/sample10_lables.txt"       # this is the corresponding txt file, 1 class in each line
 
 # Since padding='VALID' for the filter, dimensionality has to be reduced
 reduce_dim = n_gram - 1
