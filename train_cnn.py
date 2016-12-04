@@ -1,11 +1,15 @@
-# Main file to run the CNN on the Twitter data set
-# to perform the sentiment analysis
-
+# Main draft to run the CNN on the medical data set
 from sklearn.cross_validation import KFold
 import utils
 import tensorflow as tf
 import random
 import pickle
+
+# ToDo:
+# implement more text pre-processing (see utils.py -> check which words are not recognized by word2vec model)
+# experiment with network architecture (e.g. number and size of layers, to get feeling what works)
+# implement final grid-search with diff. hyper parameters
+# report best setup for data and store results
 
 
 # Set parameters
@@ -22,8 +26,7 @@ keep_probability = 0.5  # this is the dropout (keep) value for the training of t
 # https://tubcloud.tu-berlin.de/public.php?service=files&t=dc4f9d207bcaf4d4fae99ab3fbb1af16
 model = "/home/immanuel/ETH/data/german.model"
 diagnoses = "/home/immanuel/Desktop/sample10.txt"           # this is a txt file, where each line is a diagnosis
-labels = "/home/immanuel/Desktop/sample10_lables.txt"       # this is the corresponding txt file, where each line is the
-                                                            # corresponding class
+labels = "/home/immanuel/Desktop/sample10_lables.txt"       # this is the corresponding txt file, 1 class in each line
 
 # Since padding='VALID' for the filter, dimensionality has to be reduced
 reduce_dim = n_gram - 1
@@ -114,6 +117,7 @@ for train_index, test_index in kf:
     x_train, x_test = data[train_index], data[test_index]
     y_train, y_test = labels[train_index], labels[test_index]
 
+    # Check shape of arrays
     # print("Shape of arrays: ")
     # print(x_train.shape)
     # print(y_train.shape)
