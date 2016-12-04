@@ -24,16 +24,13 @@ def replace_umlauts(text):
     res = res.replace(u'Ü', 'Ue')
     res = res.replace(u'ß', 'ss')
 
-    #for i in res:
-    #    if i in punctuation_tokens:
-
     return res
 
 
-def load_diagnoses_and_labels(diagnoses, labels, data_subset):
+def load_diagnoses_and_labels(diagnoses, labels, data_subset, num_classes):
     """
-    Loads MR polarity data from files, splits the data into words and generates labels.
-    Returns split sentences and labels.
+    Loads data from txt files, splits the data into words and generates labels.
+    Returns split diagnoses and labels.
     """
     # Load data from files
     diag = list(open(diagnoses, "r").readlines())
@@ -53,7 +50,7 @@ def load_diagnoses_and_labels(diagnoses, labels, data_subset):
     for i in range(len(lbl)):
         lbl[i] = int(lbl[i])
     a = np.array(lbl)
-    b = np.zeros((len(lbl), 5))         # 5 labels 0 to 4
+    b = np.zeros((len(lbl), num_classes))         # e.g. 5 labels 0 to 4 for different cancer stages
     b[np.arange(len(lbl)), a] = 1
     one_hot = b
 
@@ -75,8 +72,8 @@ def load_diagnoses_and_labels(diagnoses, labels, data_subset):
 
 def pad_diagnoses(sentences, padding_word='<PAD/> '):
     """
-    Pads all sentences to the same length. The length is defined by the longest sentence.
-    Returns padded sentences.
+    Pads all sentences from diagnoses to the same length. The length is defined by the longest sentence.
+    Returns padded diagnose sentences.
     """
     len_ = 0
     for i in range(len(sentences)):
@@ -85,7 +82,6 @@ def pad_diagnoses(sentences, padding_word='<PAD/> '):
             len_ = length
 
     sequence_length = len_
-    # sequence_length = max(len(x) for x in sentences)
     padded_sentences = []
     for i in range(len(sentences)):
         sentence = str(sentences[i])
@@ -104,10 +100,10 @@ def pad_diagnoses(sentences, padding_word='<PAD/> '):
 
 def build_input_data(sentence, path):
     """
-    Maps sentencs and labels to vectors based on Googles pre-trained word2vec
-    Trained on more than a billion words
+    Maps sentencs and labels to vectors based on German pre-trained word2vec
+    Trained on ca. 600Mio words from German Wikipedia
     """
-    # create Google word2vec
+    # Load German word2vec model
     print('Load German word2vec pre-implemented ...')
     model = word2vec.Word2Vec.load_word2vec_format(path, binary=True)
     print('Model created successfully; now create create sentence representation...')
@@ -115,11 +111,9 @@ def build_input_data(sentence, path):
     tmp2 = []
 
     for i in range(len(sentence)):
-        # convert unicode back to str
-        # sent = sentence[i].encode('ascii')
         sent = sentence[i]
-        print(i)
-        print(len(sent.split()))
+        # print(i)
+        # print(len(sent.split()))
 
         tmp = []
         for word in sent.split():
@@ -130,7 +124,7 @@ def build_input_data(sentence, path):
             except Exception as e:
                 # append same sized 300 zeros for unknown words
                 tmp.append(np.reshape(np.array([0] * 300), (300, 1), 1))
-                # ToDo: generate txt with unknown words
+                # ToDo: generate txt with unknown words to fine tune the text pre-processing
                 continue
 
         tmp2.append(tmp)
@@ -140,17 +134,16 @@ def build_input_data(sentence, path):
     return x
 
 
-def load_data(model, diagnoses, labels, data_subset):
+def load_data(model, diagnoses, labels, data_subset, num_classes):
     """
-    Loads and preprocessed data for the MR dataset.
-    Returns input vectors, labels, vocabulary, and inverse vocabulary.
+    Loads and preprocessed data for the model.
+    Returns data aka diagnoses, one_hot aka the labels and the maximum sequence word length from the diagnoses.
     """
 
-    # ToDo: do some further text pre-processing: e.g. it doesnt like the "1." in "Beurteilung 1."
-    # if so, the rest of the sentence is chopped off
+    # ToDo: do some further text pre-processing => e.g. remove all punctuation (see punctuation_tokens)
 
     # Load and pre-process data
-    diagnoses, one_hot = load_diagnoses_and_labels(diagnoses, labels, data_subset)
+    diagnoses, one_hot = load_diagnoses_and_labels(diagnoses, labels, data_subset, num_classes)
     diagnoses_padded, sequence_length = pad_diagnoses(diagnoses)
     x = build_input_data(diagnoses_padded, model)
 

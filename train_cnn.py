@@ -2,46 +2,41 @@
 # to perform the sentiment analysis
 
 from sklearn.cross_validation import KFold
-from numpy import genfromtxt
 import utils
 import tensorflow as tf
-import numpy as np
 import random
 import pickle
-#import matplotlib.pyplot as plt
 
 
 # Set parameters
-NIter = 2000
-N_gram = 3
-batch_size = 2
-NFolds = 2
-# Path = './GoogleNews-vectors-negative300.bin'     # DOWNLOAD THIS FILE (1.8GB): https://github.com/3Top/word2vec-api
+num_iter = 2000         # number of iterations per k-fold cross validation
+n_gram = 3              # try different n-grams: 1, 2, 3, 4, 5
+batch_size = 2          # how many sentences to feed the network at once
+num_folds = 2           # how many folds in k-fold-cross-validation
+data_subset = 8         # create a subset of size data_subset (get results faster)
+eval_acc_every = 10     # in the training: evaluate the test accuracy ever X steps
+num_classes = 5         # how many different classes exist?
+keep_probability = 0.5  # this is the dropout (keep) value for the training of the CNN
+
+# ToDo: Download the German word2vec model (700MB, link) and set the path accordingly
+# https://tubcloud.tu-berlin.de/public.php?service=files&t=dc4f9d207bcaf4d4fae99ab3fbb1af16
 model = "/home/immanuel/ETH/data/german.model"
-# PosTweets = "./data/50Kpositive.txt"              # 50.000 positive Tweets
-# NegTweets = "./data/50Knegative.txt"              # 50.000 negative Tweets
-data_subset = 8     # create data subset
-
-
-num_classes = 5
-diagnoses = "/home/immanuel/Desktop/sample10.txt"
-labels = "/home/immanuel/Desktop/sample10_lables.txt"
+diagnoses = "/home/immanuel/Desktop/sample10.txt"           # this is a txt file, where each line is a diagnosis
+labels = "/home/immanuel/Desktop/sample10_lables.txt"       # this is the corresponding txt file, where each line is the
+                                                            # corresponding class
 
 # Since padding='VALID' for the filter, dimensionality has to be reduced
-reduce_dim = N_gram-1
+reduce_dim = n_gram - 1
 
-# Pre-process (shuffle, clean etc.) and load the twitter data (or a subset)
-data, labels, sequence_length = utils.load_data(model, diagnoses, labels, data_subset)
+# Pre-process (clean, shuffle etc.) and load the medical data (respectively a subset of size data_subset)
+data, labels, sequence_length = utils.load_data(model, diagnoses, labels, data_subset, num_classes)
 
 # Initiate Tensorflow session
 sess = tf.InteractiveSession()
 
 # Create placeholders
-# sequence_length = max tweet word length (if tweet is shorter -> augmented to max size)
+# sequence_length = max word length of diagnoses (if diagnose is shorter -> augmented to max size with "PAD" word)
 # 300 is dimensionality of each word embedding by pre-trained word2vec model on German Wikipedia data
-# Link to download: https://tubcloud.tu-berlin.de/public.php?service=files&t=dc4f9d207bcaf4d4fae99ab3fbb1af16
-# on http://devmount.github.io/GermanWordEmbeddings/,
-# 5 output neurons for 0-4 cancer stadiums
 x = tf.placeholder("float", shape=[None, sequence_length, 300, 1])
 y_ = tf.placeholder("float", shape=[None, num_classes])
 
@@ -63,7 +58,7 @@ def conv2d(x, W):
     return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='VALID')    # do not change VALID
 
 # First Convolutional Layer
-W_conv1 = weight_variable([N_gram, 300, 1, 32])
+W_conv1 = weight_variable([n_gram, 300, 1, 32])
 b_conv1 = bias_variable([32])
 
 # Convolve with the weight tensor, add the bias, apply the ReLU function
@@ -99,16 +94,17 @@ sess.run(tf.initialize_all_variables())
 print('Perform cross-validation...')
 data_size = len(labels)
 print("Data Size: %d" % data_size)
-kf = KFold(data_size, n_folds=NFolds, shuffle=False)
 
-# Store final accuracy of folds
+kf = KFold(data_size, n_folds=num_folds, shuffle=False)
+
+# Store final accuracy of different folds
 count = 0
 train_accuracy_fold = []
 train_accuracy_total = []
 test_accuracy_final = []
 
 for train_index, test_index in kf:
-    # Initialize variables again
+    # Initialize variables
     sess.run(tf.initialize_all_variables())
 
     train_accuracy_fold = []
@@ -118,27 +114,28 @@ for train_index, test_index in kf:
     x_train, x_test = data[train_index], data[test_index]
     y_train, y_test = labels[train_index], labels[test_index]
 
-    print("Shape of arrays: ")
-    print(x_train.shape)
-    print(y_train.shape)
+    # print("Shape of arrays: ")
+    # print(x_train.shape)
+    # print(y_train.shape)
 
-    # Loop over number iterations
-    for i in range(NIter):
-        # Set batch size
+    # Start training loop
+    for i in range(num_iter):
+        # Set batch size (how many diff. diagnoses presented at once)
         indices = random.sample(xrange(len(x_train)), batch_size)
         batch = x_train[indices]
         ybatch = y_train[indices]
 
-        """
-        if i % 1 == 0:
+        if i % eval_acc_every == 0:                         # evaluate every X-th training step to monitor overfitting
+            # run the evaluation step
             train_accuracy = accuracy.eval(feed_dict={
-                x: batch, y_: ybatch, keep_prob: 1.0})
+                x: batch, y_: ybatch, keep_prob: 1.0})      # in evaluation dropout has to be 1.0
 
             # save value
             train_accuracy_fold.append(train_accuracy)
             print("step %d, training accuracy %g" % (i, train_accuracy))
-        """
-        train_step.run(feed_dict={x: batch, y_: ybatch, keep_prob: 0.5})
+
+        # run the training step
+        train_step.run(feed_dict={x: batch, y_: ybatch, keep_prob: keep_probability}) # in training dropout can be set
 
     test_acc = accuracy.eval(feed_dict={
         x: x_test, y_: y_test, keep_prob: 1.0})
@@ -148,13 +145,14 @@ for train_index, test_index in kf:
     test_accuracy_final.append(test_acc)
     print("TEST ACCURACY %g" % test_acc)
 
-print("\nFINAL TEST ACCURACY: ")
+print("\nFINAL TEST ACCURACY per k-fold: ")
 print(test_accuracy_final)
 
-print("\nTRAIN ACCURACIES TOTAL: ")
+print("\nTRAIN ACCURACIES all: ")
 print(train_accuracy_total)
 
 # Store TRAIN results in pickle files
+"""
 f = open('./Results/' + str(data_subset) + '_' + str(NIter) + '_' + str(N_gram) + '_' + str(NFolds) + '_results_Train.pckl', 'w')
 pickle.dump(train_accuracy_total, f)
 f.close()
@@ -163,14 +161,4 @@ f.close()
 f = open('./Results/' + str(data_subset) + '_' + str(NIter) + '_' + str(N_gram) + '_' + str(NFolds) + '_results_Test.pckl', 'w')
 pickle.dump(test_accuracy_final, f)
 f.close()
-
-# Open results in pickle files
-#f = open('./Results/' + str(DataSubSet) + '_' + str(NIter) + '_' + str(N_gram) + '_' + str(NFolds) + '_results_Train.pckl')
-#obj_train = pickle.load(f)
-#f.close()
-
-#f = open('./Results/' + str(DataSubSet) + '_' + str(NIter) + '_' + str(N_gram) + '_' + str(NFolds) + '_results_Test.pckl')
-#obj_test = pickle.load(f)
-#f.close()
-
-# Plot curves etc.
+"""
