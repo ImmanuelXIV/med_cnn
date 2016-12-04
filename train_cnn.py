@@ -14,7 +14,7 @@ import pickle
 # Set parameters
 NIter = 2000
 N_gram = 3
-BatchSize = 1
+batch_size = 2
 NFolds = 2
 # Path = './GoogleNews-vectors-negative300.bin'     # DOWNLOAD THIS FILE (1.8GB): https://github.com/3Top/word2vec-api
 model = "/home/immanuel/ETH/data/german.model"
@@ -98,6 +98,7 @@ sess.run(tf.initialize_all_variables())
 
 print('Perform cross-validation...')
 data_size = len(labels)
+print("Data Size: %d" % data_size)
 kf = KFold(data_size, n_folds=NFolds, shuffle=False)
 
 # Store final accuracy of folds
@@ -117,10 +118,14 @@ for train_index, test_index in kf:
     x_train, x_test = data[train_index], data[test_index]
     y_train, y_test = labels[train_index], labels[test_index]
 
+    print("Shape of arrays: ")
+    print(x_train.shape)
+    print(y_train.shape)
+
     # Loop over number iterations
     for i in range(NIter):
         # Set batch size
-        indices = random.sample(xrange(len(x_train)), BatchSize)
+        indices = random.sample(xrange(len(x_train)), batch_size)
         batch = x_train[indices]
         ybatch = y_train[indices]
 

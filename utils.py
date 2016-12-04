@@ -23,6 +23,10 @@ def replace_umlauts(text):
     res = res.replace(u'Ö', 'Oe')
     res = res.replace(u'Ü', 'Ue')
     res = res.replace(u'ß', 'ss')
+
+    #for i in res:
+    #    if i in punctuation_tokens:
+
     return res
 
 
@@ -33,9 +37,9 @@ def load_diagnoses_and_labels(diagnoses, labels, data_subset):
     """
     # Load data from files
     diag = list(open(diagnoses, "r").readlines())
-    diag = [s.strip().lower() for s in diag]
+    diag = [s.strip() for s in diag]
     lbl = list(open(labels, "r").readlines())
-    lbl = [s.strip().lower() for s in lbl]
+    lbl = [s.strip() for s in lbl]
 
     # Split by words
     for i in range(len(diag)):
@@ -69,26 +73,36 @@ def load_diagnoses_and_labels(diagnoses, labels, data_subset):
     return [diag, one_hot]
 
 
-def pad_diagnoses(sentences, padding_word=u'<PAD/>'):
+def pad_diagnoses(sentences, padding_word='<PAD/> '):
     """
     Pads all sentences to the same length. The length is defined by the longest sentence.
     Returns padded sentences.
     """
-    sequence_length = max(len(x) for x in sentences)
+    len_ = 0
+    for i in range(len(sentences)):
+        length = len(str(sentences[i]).split())
+        if length > len_:
+            len_ = length
+
+    sequence_length = len_
+    # sequence_length = max(len(x) for x in sentences)
     padded_sentences = []
     for i in range(len(sentences)):
-        sentence = sentences[i]
-        num_padding = sequence_length - len(sentence)
-        pad_list = [padding_word] * num_padding
+        sentence = str(sentences[i])
+        num_padding = sequence_length - len(sentence.split())
+        pad_list = [padding_word] * (num_padding + 1)
 
+        # print(num_padding)
         for j in range(len(pad_list)):
             sentence += pad_list[j]
+        # print(len(sentence.split()))
 
         padded_sentences.append(sentence)
+
     return padded_sentences, sequence_length
 
 
-def build_input_data(sentences, path):
+def build_input_data(sentence, path):
     """
     Maps sentencs and labels to vectors based on Googles pre-trained word2vec
     Trained on more than a billion words
@@ -99,9 +113,16 @@ def build_input_data(sentences, path):
     print('Model created successfully; now create create sentence representation...')
 
     tmp2 = []
-    for sentence in sentences:
+
+    for i in range(len(sentence)):
+        # convert unicode back to str
+        # sent = sentence[i].encode('ascii')
+        sent = sentence[i]
+        print(i)
+        print(len(sent.split()))
+
         tmp = []
-        for word in sentence:
+        for word in sent.split():
             # skip unknown words
             try:
                 tmp.append(np.reshape(model[word], (300, 1), 1))
@@ -113,6 +134,7 @@ def build_input_data(sentences, path):
                 continue
 
         tmp2.append(tmp)
+
     x = np.array(tmp2)
 
     return x
