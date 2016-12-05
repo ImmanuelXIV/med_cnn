@@ -8,7 +8,7 @@ import nltk
 sentence_detector = nltk.data.load('tokenizers/punkt/german.pickle')
 punctuation_tokens = ['.', '..', '...', ',', ';', ':', '(', ')', '"', '\'', '[', ']', '{', '}', '?', '!', '-', u'–',
                       '+', '*', '--', '\'\'', '``']
-punctuation = '?.!/;:()&+'
+punctuation = '?.!/;:()&+' # consider string.punctuation -> '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
 
 
 def replace_umlauts(text):
